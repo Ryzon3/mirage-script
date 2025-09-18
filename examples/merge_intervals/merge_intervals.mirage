@@ -1,0 +1,40 @@
+story "Merge Intervals"
+
+object IntervalGarden:
+  has intervals (List<List<Int>>) meaning "original ranges"
+  has merged (List<List<Int>>) meaning "ranges after pruning overlaps"
+  has narrative (Text) meaning "explanation of the pruning"
+
+inputs:
+  argument intervals as List<List<Int>> with "Intervals to merge"
+
+helper prune_overlaps returns Text:
+  needs garden (IntervalGarden)
+  prompt:
+<<<
+Merge overlapping intervals like the LeetCode problem. Assume each pair is inclusive and keep the results sorted by start.
+Return the merged list in bracket notation and mention how many merges happened.
+Rewrite garden.merged with the final list and leave narrative alone.
+>>>
+
+helper narrate_pruning returns Text:
+  needs garden (IntervalGarden)
+  prompt:
+<<<
+Explain in two sentences how the original intervals were combined.
+Reference both the original pairs and the merged ones.
+Store the explanation in garden.narrative and return it.
+>>>
+
+begin:
+  remember garden as IntervalGarden with "intervals: {intervals}; merged: (empty); narrative: (none)"
+  note "Time to clean up overlapping appointments."
+  ask prune_overlaps for:
+    garden is memory garden
+  keep answer as merged
+  ask narrate_pruning for:
+    garden is memory garden
+  keep answer as story
+  show merged
+  show story
+  show garden

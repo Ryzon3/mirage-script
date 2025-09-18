@@ -1,0 +1,49 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MirageScript",
+  "scopeName": "source.mirage",
+  "patterns": [
+    {
+      "name": "comment.line.number-sign.mirage",
+      "match": "#.*$"
+    },
+    {
+      "name": "keyword.control.mirage",
+      "match": "\\b(begin|story|object|inputs|helper|needs|prompt|remember|ask|for|keep|show|note|with|returns|argument|file)\\b"
+    },
+    {
+      "name": "keyword.operator.assignment.mirage",
+      "match": "\\b(is)\\b"
+    },
+    {
+      "name": "entity.name.type.mirage",
+      "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+    },
+    {
+      "name": "support.function.mirage",
+      "match": "\\bemit_response\\b"
+    },
+    {
+      "begin": "<<<",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.string.begin.mirage" }
+      },
+      "end": ">>>",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.string.end.mirage" }
+      },
+      "name": "string.quoted.block.mirage"
+    },
+    {
+      "name": "string.quoted.double.mirage",
+      "match": "\"([^\\\\\"\\n]|\\\\.)*\""
+    },
+    {
+      "name": "variable.language.memory.mirage",
+      "match": "\\b(memory)\\b"
+    }
+  ],
+  "fileTypes": [
+    "mirage"
+  ]
+}

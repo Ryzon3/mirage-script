@@ -1,0 +1,40 @@
+story "Maximum Value Finder"
+
+object NumberPile:
+  has items (List<Int>) meaning "numbers waiting their turn"
+  has champion (Int) meaning "current best number"
+
+inputs:
+  argument numbers as List<Int> with "Numbers to inspect"
+
+helper pick_champion returns Int:
+  needs pile (NumberPile)
+  prompt:
+<<<
+Look through pile.items, decide which number is greatest, and announce the winner joyfully.
+Update pile.champion in your response so future calls know the best number.
+Call emit_response with a playful return value and mention the winning number numerically.
+>>>
+
+helper describe_numbers returns Text:
+  needs label (Text)
+  needs numbers (List<Int>)
+  prompt:
+<<<
+Write a short friendly sentence that mentions the label and lists the numbers clearly.
+Keep everything under 25 words.
+>>>
+
+begin:
+  remember pile as NumberPile with "items: {numbers}; champion: 0"
+  remember tag as Text with "Input numbers"
+  ask describe_numbers for:
+    label is memory tag
+    numbers is memory numbers
+  keep answer as story
+  ask pick_champion for:
+    pile is memory pile
+  keep answer as biggest
+  show story
+  show biggest
+  show pile

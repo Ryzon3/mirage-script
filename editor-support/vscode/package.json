@@ -1,0 +1,28 @@
+{
+  "name": "miragescript-syntax",
+  "displayName": "MirageScript Syntax",
+  "description": "Syntax highlighting for MirageScript story files.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "mirage",
+        "aliases": ["MirageScript", "mirage"],
+        "extensions": [".mirage"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mirage",
+        "scopeName": "source.mirage",
+        "path": "./syntaxes/mirage.tmLanguage.json"
+      }
+    ]
+  }
+}

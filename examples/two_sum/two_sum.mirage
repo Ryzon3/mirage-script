@@ -1,0 +1,42 @@
+story "Two Sum Solver"
+
+object NumberQuest:
+  has numbers (List<Int>) meaning "numbers under investigation"
+  has target (Int) meaning "desired sum"
+  has match (Pair<Int>) meaning "indices that succeed"
+
+inputs:
+  argument numbers as List<Int> with "Candidate numbers"
+  argument target as Int with "Desired target sum"
+
+helper pick_pair returns Text:
+  needs quest (NumberQuest)
+  prompt:
+<<<
+Solve the classic Two Sum puzzle. Pick two distinct indices (0-based) whose values add up to quest.target.
+Choose the first valid pair in ascending index order.
+Call emit_response with a sentence like "Indices 0 and 1 (2 + 7) reach 9." and rewrite quest.match so it remembers the pair as "(i, j)".
+>>>
+
+helper verify_pair returns Text:
+  needs quest (NumberQuest)
+  needs answer (Text)
+  prompt:
+<<<
+Confirm that the answer really hits the target. Restate the check in one short sentence.
+If something is off, gently say so instead of pretending.
+>>>
+
+begin:
+  remember quest as NumberQuest with "numbers: {numbers}; target: {target}; match: (unknown)"
+  note "Identify the first pair of indices that reach the target sum."
+  ask pick_pair for:
+    quest is memory quest
+  keep answer as result
+  ask verify_pair for:
+    quest is memory quest
+    answer is memory result
+  keep answer as proof
+  show result
+  show proof
+  show quest

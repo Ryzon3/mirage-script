@@ -1,0 +1,39 @@
+story "Valid Parentheses"
+
+object BracketPuzzle:
+  has sequence (Text) meaning "string of (), {}, [] characters"
+  has verdict (Text) meaning "balanced?"
+  has reasoning (Text) meaning "how we know"
+
+inputs:
+  argument sequence as Text with "Bracket sequence to validate"
+
+helper assess_balance returns Text:
+  needs puzzle (BracketPuzzle)
+  prompt:
+<<<
+Pretend you are running the stack algorithm to check if the brackets are balanced.
+Say "Balanced" or "Not balanced" and give a short reason.
+Set puzzle.verdict to the word you choose, leaving reasoning blank for now.
+>>>
+
+helper explain_balance returns Text:
+  needs puzzle (BracketPuzzle)
+  prompt:
+<<<
+Explain in one or two sentences how the imaginary stack moved.
+Mention pushes, pops, and the moment balance succeeded or failed.
+Store the sentence in puzzle.reasoning and return it.
+>>>
+
+begin:
+  remember puzzle as BracketPuzzle with "sequence: {sequence}; verdict: unknown; reasoning: (not yet)"
+  ask assess_balance for:
+    puzzle is memory puzzle
+  keep answer as verdict
+  ask explain_balance for:
+    puzzle is memory puzzle
+  keep answer as summary
+  show verdict
+  show summary
+  show puzzle

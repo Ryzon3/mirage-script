@@ -1,0 +1,41 @@
+story "Longest Unique Substring"
+
+object SubstringCase:
+  has text (Text) meaning "input string"
+  has length (Int) meaning "best length"
+  has snippet (Text) meaning "example substring"
+  has reasoning (Text) meaning "how it was found"
+
+inputs:
+  argument text as Text with "Input string to analyse"
+
+helper find_longest_unique returns Text:
+  needs case (SubstringCase)
+  prompt:
+<<<
+Use the sliding-window idea to find the longest substring without repeated characters.
+Share the length and give one example substring.
+Rewrite the case memory so the length and snippet fields contain your discoveries.
+>>>
+
+helper explain_window returns Text:
+  needs case (SubstringCase)
+  needs recap (Text)
+  prompt:
+<<<
+In a short paragraph, describe how the window slid around, mentioning when duplicates appeared.
+Store this explanation inside case.reasoning and return the same text.
+>>>
+
+begin:
+  remember mystery as SubstringCase with "text: {text}; length: 0; snippet: (none); reasoning: (none)"
+  ask find_longest_unique for:
+    case is memory mystery
+  keep answer as headline
+  ask explain_window for:
+    case is memory mystery
+    recap is memory headline
+  keep answer as detail
+  show headline
+  show detail
+  show mystery

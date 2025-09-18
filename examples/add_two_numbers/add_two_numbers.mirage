@@ -1,0 +1,41 @@
+story "Add Two Numbers"
+
+object LinkedLists:
+  has list_a (List<Int>) meaning "digits for the first number (reverse order)"
+  has list_b (List<Int>) meaning "digits for the second number (reverse order)"
+  has result (List<Int>) meaning "sum digits (reverse order)"
+  has carry_notes (Text) meaning "explanation of carries"
+
+inputs:
+  argument list_a as List<Int> with "Digits for the first number"
+  argument list_b as List<Int> with "Digits for the second number"
+
+helper add_lists returns Text:
+  needs data (LinkedLists)
+  prompt:
+<<<
+Add the two reversed digit lists together like the LeetCode problem. Mention the full equation and the resulting digit list.
+Rewrite data.result with the exact list of digits you produce.
+>>>
+
+helper explain_carries returns Text:
+  needs data (LinkedLists)
+  needs recap (Text)
+  prompt:
+<<<
+Describe how the addition worked column by column. Mention carries and remind the reader that the digits are reversed.
+Store the explanation in data.carry_notes and return the same text.
+>>>
+
+begin:
+  remember payload as LinkedLists with "list_a: {list_a}; list_b: {list_b}; result: (unset); carry_notes: (none)"
+  ask add_lists for:
+    data is memory payload
+  keep answer as headline
+  ask explain_carries for:
+    data is memory payload
+    recap is memory headline
+  keep answer as story
+  show headline
+  show story
+  show payload
