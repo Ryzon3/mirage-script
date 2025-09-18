@@ -12,16 +12,15 @@ MirageScript is a story-driven language where functions are prompts and `gpt-5-m
 
 ## Quick start
 1. Ensure your `.env` file contains `OPENAI_API_KEY` (the CLI loads it automatically).
-2. Install dependencies with [uv](https://github.com/astral-sh/uv) (network access required):
+2. Install dependencies with [uv](https://github.com/astral-sh/uv):
    ```bash
-   UV_CACHE_DIR=.uv-cache uv run --no-sync python -m pip install -e .
+   uv sync
    ```
-3. Run a Mirage program (requires outbound access to OpenAI):
+3. Run a Mirage program (requires access to the OpenAI API):
    ```bash
    uv run mirage examples/max_value_finder/max_value_finder.mirage --dump-state --arg numbers="[3, 14, 7, 28]"
    ```
 
-> Without network access the interpreter will stop with a DNS error when it tries to call the API.
 > Supply runtime values with `--arg name=value` (and `--file name=path` for file-based inputs).
 
 ## Docs & language guide
@@ -29,9 +28,9 @@ MirageScript is a story-driven language where functions are prompts and `gpt-5-m
 - `QUICKSTART.md` shows two tiny programs you can copy, run, and tweak.
 
 ## Testing
-Run unit tests (no network needed):
+Run unit tests:
 ```bash
-PYTHONPATH=src python3 -m unittest discover -s tests
+uv run python -m unittest discover -s tests
 ```
 
 ## Linting
@@ -52,7 +51,7 @@ If Ruff is not pre-installed, the command will try to download it from PyPI.
 Each subfolder contains a `.mirage` file and a markdown explainer.
 
 ## Example transcript
-Once the network is available, executing `examples/max_value_finder/max_value_finder.mirage --arg numbers="[3, 14, 7, 28]"` prints:
+Executing `examples/max_value_finder/max_value_finder.mirage --arg numbers="[3, 14, 7, 28]"` prints:
 ```
 input argument numbers [List<Int>] = [3, 14, 7, 28]
 remembered pile [NumberPile] = items: [3, 14, 7, 28]; champion: 0
