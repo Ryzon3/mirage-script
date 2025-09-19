@@ -1,8 +1,8 @@
 {
   "name": "miragescript-syntax",
   "displayName": "MirageScript Syntax",
-  "description": "Syntax highlighting for MirageScript story files.",
-  "version": "0.1.0",
+  "description": "Syntax highlighting for MirageScript programs.",
+  "version": "0.2.0",
   "publisher": "local",
   "engines": {
     "vscode": "^1.80.0"

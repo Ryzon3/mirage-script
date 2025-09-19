@@ -9,7 +9,7 @@
     },
     {
       "name": "keyword.control.mirage",
-      "match": "\\b(begin|story|object|inputs|helper|needs|prompt|remember|ask|for|keep|show|note|with|returns|argument|file)\\b"
+      "match": "\\b(begin|story|object|inputs|helper|needs|prompt|remember|ask|for|keep|show|note|with|returns|argument|file|meaning|raise|error)\\b"
     },
     {
       "name": "keyword.operator.assignment.mirage",
@@ -21,7 +21,7 @@
     },
     {
       "name": "support.function.mirage",
-      "match": "\\bemit_output\\b"
+      "match": "\\b(emit_output|list_inputs|get_input|read_source|read_file|save_file|raise_error)\\b"
     },
     {
       "begin": "<<<",

@@ -24,7 +24,7 @@ cp -R $(pwd)/editor-support/vscode ~/.vscode/extensions/miragescript-syntax
 Quit and reopen VS Code. You should now see highlighted MirageScript files.
 If highlighting doesn’t appear immediately, run the **Developer: Reload Window** command.
 
-The grammar recognises the full language, including `inputs:`, `argument`, `file`, `ask ... for`, and prompt blocks within `<<< >>>`.
+The grammar recognises the full language, including `inputs:`, explicit `argument`/`file` bindings, `ask ... for` blocks, and prompt sections within `<<< >>>`.
 
 ## 3. Optional: Package with `vsce`
 
@@ -36,8 +36,9 @@ vsce package
 This produces a `.vsix` file that others can install via **Extensions → … → Install from VSIX…**.
 
 ## Grammar highlights
-- Keywords: `story`, `object`, `inputs`, `argument`, `file`, `helper`, `needs`, `prompt`, `begin`, `remember`, `ask`, `for`, `keep`, `show`, `note`, `with`, `returns`, `is`.
-- Block prompts inside `<<< >>>` are treated as strings.
+- Keywords: `story`, `object`, `inputs`, `argument`, `file`, `helper`, `needs`, `meaning`, `prompt`, `begin`, `remember`, `ask`, `for`, `keep`, `show`, `note`, `with`, `raise`, `error`, `returns`, `is`.
+- Tool calls (`emit_output`, `list_inputs`, `get_input`, `read_source`, `read_file`, `save_file`, `raise_error`) receive function colouring.
+- Block prompts inside `<<< >>>` are treated as strings, and the language configuration now auto-closes the triple-angle brackets.
 - Uppercase identifiers (e.g., `NumberPile`) render as types.
 - `#` comments become grey.
 
