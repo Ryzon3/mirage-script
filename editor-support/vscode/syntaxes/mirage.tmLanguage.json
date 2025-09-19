@@ -21,7 +21,7 @@
     },
     {
       "name": "support.function.mirage",
-      "match": "\\bemit_response\\b"
+      "match": "\\bemit_output\\b"
     },
     {
       "begin": "<<<",

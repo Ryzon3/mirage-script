@@ -13,7 +13,7 @@ inputs:
   argument list_b as List<Int> with "Digits for the second number"
 
 helper add_lists returns Text:
-  needs data (LinkedLists)
+  needs data (LinkedLists) meaning "input digit lists and accumulated result"
   prompt:
 <<<
 Add the two reversed digit lists together like the LeetCode problem. Mention the full equation and the resulting digit list using plain, matter-of-fact wording.
@@ -21,8 +21,8 @@ Rewrite data.result with the exact list of digits you produce.
 >>>
 
 helper explain_carries returns Text:
-  needs data (LinkedLists)
-  needs recap (Text)
+  needs data (LinkedLists) meaning "input digit lists and accumulated result"
+  needs recap (Text) meaning "sentence produced by add_lists"
   prompt:
 <<<
 Describe how the addition worked column by column. Mention carries and remind the reader that the digits are reversed.

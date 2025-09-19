@@ -11,7 +11,7 @@ inputs:
   argument target as Int with "Desired target sum"
 
 helper pick_pair returns Text:
-  needs quest (NumberQuest)
+  needs quest (NumberQuest) meaning "numbers, target, and working match"
   prompt:
 <<<
 Solve the classic Two Sum puzzle. Pick two distinct indices (0-based) whose values add up to quest.target.
@@ -21,8 +21,8 @@ Rewrite quest.match so it remembers the pair as "(i, j)".
 >>>
 
 helper verify_pair returns Text:
-  needs quest (NumberQuest)
-  needs answer (Text)
+  needs quest (NumberQuest) meaning "numbers, target, and working match"
+  needs answer (Text) meaning "result sentence from pick_pair"
   prompt:
 <<<
 Confirm that the answer really hits the target. Restate the check in one short sentence using neutral tone.
@@ -31,7 +31,7 @@ If something is off, say so plainly instead of pretending.
 
 begin:
   remember quest as NumberQuest with "numbers: {numbers}; target: {target}; match: (unknown)"
-  note "Identify the first pair of indices that reach the target sum."
+  note with "Identify the first pair of indices that reach the target sum."
   ask pick_pair for:
     quest is memory quest
   keep answer as result

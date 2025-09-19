@@ -11,7 +11,7 @@ inputs:
   argument sequence as Text with "Bracket sequence to validate"
 
 helper assess_balance returns Text:
-  needs puzzle (BracketPuzzle)
+  needs puzzle (BracketPuzzle) meaning "bracket string and current findings"
   prompt:
 <<<
 Pretend you are running the stack algorithm to check if the brackets are balanced.
@@ -20,7 +20,7 @@ Set puzzle.verdict to the word you choose, leaving reasoning blank for now.
 >>>
 
 helper explain_balance returns Text:
-  needs puzzle (BracketPuzzle)
+  needs puzzle (BracketPuzzle) meaning "bracket string and current findings"
   prompt:
 <<<
 Explain in one or two sentences how the imaginary stack moved.

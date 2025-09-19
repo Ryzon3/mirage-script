@@ -12,7 +12,7 @@ inputs:
   argument text as Text with "Input string to analyse"
 
 helper find_longest_unique returns Text:
-  needs case (SubstringCase)
+  needs case (SubstringCase) meaning "text under analysis and current best window"
   prompt:
 <<<
 Use the sliding-window idea to find the longest substring without repeated characters.
@@ -22,8 +22,8 @@ Report the findings in a short factual sentence (for example, "Best length: 3, s
 >>>
 
 helper explain_window returns Text:
-  needs case (SubstringCase)
-  needs recap (Text)
+  needs case (SubstringCase) meaning "text under analysis and current best window"
+  needs recap (Text) meaning "summary sentence from find_longest_unique"
   prompt:
 <<<
 In a short paragraph, describe how the window slid around, mentioning when duplicates appeared.

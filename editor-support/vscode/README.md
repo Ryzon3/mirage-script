@@ -1,6 +1,6 @@
 # MirageScript VS Code Highlighting
 
-This folder ships a lightweight VS Code extension that colours `.mirage` stories.
+This folder ships a lightweight VS Code extension that provides syntax highlighting for `.mirage` files.
 Install it locally in a few minutes:
 
 ## 1. Copy or link the extension
@@ -21,7 +21,7 @@ cp -R $(pwd)/editor-support/vscode ~/.vscode/extensions/miragescript-syntax
 
 ## 2. Restart VS Code
 
-Quit and reopen VS Code. You should now see colourful MirageScript files.
+Quit and reopen VS Code. You should now see highlighted MirageScript files.
 If highlighting doesn’t appear immediately, run the **Developer: Reload Window** command.
 
 The grammar recognises the full language, including `inputs:`, `argument`, `file`, `ask ... for`, and prompt blocks within `<<< >>>`.
@@ -41,4 +41,4 @@ This produces a `.vsix` file that others can install via **Extensions → … �
 - Uppercase identifiers (e.g., `NumberPile`) render as types.
 - `#` comments become grey.
 
-Tweak the colours by editing `syntaxes/mirage.tmLanguage.json` or add snippets under a new `snippets/` folder.
+Adjust the colors by editing `syntaxes/mirage.tmLanguage.json` or add snippets under a new `snippets/` folder.

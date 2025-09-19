@@ -11,7 +11,7 @@ inputs:
   argument intervals as List<List<Int>> with "Intervals to merge"
 
 helper prune_overlaps returns Text:
-  needs garden (IntervalGarden)
+  needs garden (IntervalGarden) meaning "interval data and merged results"
   prompt:
 <<<
 Merge overlapping intervals like the LeetCode problem. Assume each pair is inclusive and keep the results sorted by start.
@@ -20,7 +20,7 @@ Rewrite garden.merged with the final list and leave narrative alone.
 >>>
 
 helper narrate_pruning returns Text:
-  needs garden (IntervalGarden)
+  needs garden (IntervalGarden) meaning "interval data and merged results"
   prompt:
 <<<
 Explain in two sentences how the original intervals were combined.

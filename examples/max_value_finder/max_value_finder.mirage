@@ -3,25 +3,25 @@ story "Maximum Value Finder"
 # Use emit_output for the lines requested by `show` and finish without extra recap text.
 
 object NumberPile:
-  has items (List<Int>) meaning "numbers waiting their turn"
+  has items (List<Int>) meaning "numbers pending evaluation"
   has champion (Int) meaning "current best number"
 
 inputs:
   argument numbers as List<Int> with "Numbers to inspect"
 
 helper pick_champion returns Int:
-  needs pile (NumberPile)
+  needs pile (NumberPile) meaning "number state including pending values and champion"
   prompt:
 <<<
 Review pile.items and identify the largest number.
 Respond with a single factual sentence such as "Largest value: 28" and avoid exclamation marks or playful wording.
 Update pile.champion in your response so future calls know the best number.
-Call emit_response with that concise sentence and include the numeric winner.
+Call emit_output with that concise sentence and include the numeric winner.
 >>>
 
 helper describe_numbers returns Text:
-  needs label (Text)
-  needs numbers (List<Int>)
+  needs label (Text) meaning "descriptor shown before the list"
+  needs numbers (List<Int>) meaning "values provided by the CLI argument"
   prompt:
 <<<
 Return a short neutral sentence that mentions the label and lists the numbers in brackets, for example "Input numbers: [1, 2, 3]".
@@ -32,7 +32,7 @@ begin:
   remember tag as Text with "Input numbers"
   ask describe_numbers for:
     label is memory tag
-    numbers is memory numbers
+    numbers is argument numbers
   keep answer as story
   ask pick_champion for:
     pile is memory pile

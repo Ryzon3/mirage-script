@@ -1,10 +1,11 @@
 # MirageScript Interpreter
 
-MirageScript is a story-driven language where functions are prompts and `gpt-5-mini` performs the actual interpretation. The CLI now hands the full program file to the model and waits for tool calls that request inputs, read or write files, emit terminal output, or halt with an error. Python only brokers those tools — it no longer walks the script or mutates runtime state on its own.
+MirageScript is a prompt-oriented language where functions are instructions and `gpt-5-mini` performs the actual interpretation. The CLI hands the full program file to the model and waits for tool calls that request inputs, read or write files, emit terminal output, or halt with an error. Python only brokers those tools — it no longer walks the script or mutates runtime state on its own.
 
 ## Highlights
-- Lightweight MirageScript syntax (`remember`, `ask`, `show`, `note`) that reads like bedtime instructions.
-- Function definitions contain prompts wrapped in `<<< >>>` so writers never touch real code.
+- Lightweight MirageScript syntax (`remember`, `ask`, `show`, `note`) that emphasizes consistent imperative phrasing.
+- Function definitions contain prompts wrapped in `<<< >>>` so authors can focus on clear instructions instead of Python code.
+- Keyword-driven declarations (`argument name as Type with`, `note with`, `ask helper for:`) keep scripts uniform and easy to read.
 - The model consumes the entire program text and drives execution through structured tool calls.
 - Python stays in charge of side effects only: reading inputs, saving files, printing output, or surfacing errors on demand.
 - Tool-calling contract exposes `emit_output`, `get_input`, `list_inputs`, `read_source`, `read_file`, `save_file`, and `raise_error` — everything else is up to the model.
@@ -25,7 +26,7 @@ MirageScript is a story-driven language where functions are prompts and `gpt-5-m
 
 ## Docs & language guide
 - `LANGUAGE_REFERENCE.md` documents the full MirageScript syntax, inputs, and runtime contract.
-- `QUICKSTART.md` shows two tiny programs you can copy, run, and tweak.
+- `QUICKSTART.md` shows two short programs you can copy, run, and adjust.
 
 ## Testing
 Run unit tests:
@@ -43,7 +44,7 @@ If Ruff is not pre-installed, the command will try to download it from PyPI.
 ## Example gallery
 - `examples/max_value_finder/` — Maximum element selection with state updates.
 - `examples/two_sum/` — Classic Two Sum helper workflow.
-- `examples/add_two_numbers/` — Linked-list addition with carry narration.
+- `examples/add_two_numbers/` — Linked-list addition with explicit carry handling.
 - `examples/longest_unique_substring/` — Sliding-window unique substring search.
 - `examples/valid_parentheses/` — Stack-based bracket validator.
 - `examples/merge_intervals/` — Merging overlapping intervals.
@@ -51,4 +52,4 @@ If Ruff is not pre-installed, the command will try to download it from PyPI.
 Each subfolder contains a `.mirage` file and a markdown explainer.
 
 ## Example transcript
-Executing `examples/max_value_finder/max_value_finder.mirage --arg numbers="[3, 14, 7, 28]"` now produces whatever narration and bookkeeping the model decides to emit via `emit_output`. Expect the exact lines (and their ordering) to vary between runs because `gpt-5-mini` is in full control of the runtime.
+Executing `examples/max_value_finder/max_value_finder.mirage --arg numbers="[3, 14, 7, 28]"` produces the natural-language output and bookkeeping the model chooses to emit via `emit_output`. Expect the exact lines (and their ordering) to vary between runs because `gpt-5-mini` controls the runtime.
