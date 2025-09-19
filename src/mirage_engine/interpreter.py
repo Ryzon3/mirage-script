@@ -1,351 +1,362 @@
-"""Interpreter for MirageScript programs."""
+"""Conversation loop that lets the LLM play interpreter."""
 from __future__ import annotations
 
 import json
-import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
-from .llm_client import OpenAIClient, OpenAIError
-from .model import (
-    CallArgument,
-    CallStatement,
-    FunctionDef,
-    NoteStatement,
-    Program,
-    RememberStatement,
-    ShowStatement,
-    ValueToken,
-)
-from .state import RuntimeState
+from .llm_client import OpenAIClient
 
 
 class MirageRuntimeError(RuntimeError):
-    """Raised when execution cannot proceed."""
+    """Raised when the interpreter session cannot continue."""
 
 
 @dataclass
 class RunResult:
-    outputs: List[str]
-    state: RuntimeState
+    outputs: List[str] = field(default_factory=list)
+    final_message: str | None = None
 
 
 class MirageInterpreter:
+    """Thin controller that delegates all reasoning to the model."""
+
     def __init__(
         self,
-        program: Program,
+        *,
+        source_path: Path,
+        source_text: str,
         client: OpenAIClient,
-        input_values: Dict[str, str] | None = None,
-    ):
-        self.program = program
+        argument_inputs: Dict[str, str] | None = None,
+        file_inputs: Dict[str, Path] | None = None,
+    ) -> None:
+        self.source_path = source_path
+        self.source_text = source_text
         self.client = client
-        self.state = RuntimeState()
-        self._history: Dict[str, List[Dict[str, str]]] = {}
-        self._outputs: List[str] = []
-        self._input_values = dict(input_values or {})
-        self._inputs_seeded = False
+        self.argument_inputs = dict(argument_inputs or {})
+        self.file_inputs = dict(file_inputs or {})
+        self.outputs: List[str] = []
 
     def run(self) -> RunResult:
-        if not self._inputs_seeded:
-            self._seed_inputs()
-        for statement in self.program.statements:
-            if isinstance(statement, RememberStatement):
-                self._handle_remember(statement)
-            elif isinstance(statement, CallStatement):
-                self._handle_call(statement)
-            elif isinstance(statement, ShowStatement):
-                self._handle_show(statement)
-            elif isinstance(statement, NoteStatement):
-                self._outputs.append(f"note: {statement.text}")
-            else:
-                raise MirageRuntimeError(f"Unknown statement type: {statement}")
-        return RunResult(outputs=self._outputs, state=self.state)
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": self._system_prompt()},
+            {"role": "user", "content": self._initial_user_message()},
+        ]
 
-    def _handle_remember(self, statement: RememberStatement) -> None:
-        description = self._interpolate(statement.description)
-        self.state.remember(statement.name, statement.type_hint, description)
-        self._outputs.append(
-            f"remembered {statement.name} [{statement.type_hint}] = {description}"
-        )
+        final_message: str | None = None
 
-    def _handle_show(self, statement: ShowStatement) -> None:
-        content = self._resolve_value(statement.value)
-        self._outputs.append(f"show: {content}")
+        while True:
+            choice = self.client.complete(messages, tools=self._tool_schemas())
+            assistant_message = choice.get("message")
+            if not isinstance(assistant_message, dict):
+                raise MirageRuntimeError("Assistant response missing message payload")
 
-    def _resolve_value(self, token: ValueToken) -> str:
-        if token.is_reference:
-            target = token.reference_name
-            if target is None:
-                raise MirageRuntimeError("Reference token missing name")
-            memory = self.state.recall(target)
-            if memory is None:
-                raise MirageRuntimeError(f"Cannot show unknown memory '{target}'")
-            return f"{target} [{memory.type_hint}] = {memory.description}"
-        return token.raw
+            messages.append(assistant_message)
 
-    def _interpolate(self, text: str) -> str:
-        def replace(match: re.Match[str]) -> str:
-            name = match.group(1)
-            memory = self.state.recall(name)
-            if memory is None:
-                return match.group(0)
-            return memory.description
-
-        return re.sub(r"\{([A-Za-z_][A-Za-z0-9_]*)\}", replace, text)
-
-    def _handle_call(self, statement: CallStatement) -> None:
-        function = self.program.functions.get(statement.function_name)
-        if function is None:
-            raise MirageRuntimeError(f"Function {statement.function_name!r} is not defined")
-        argument_payload = self._build_arguments(statement.arguments, function)
-        state_summary = self.state.summary()
-        tools = [self._tool_schema()]
-        messages = self._build_messages(function, argument_payload, state_summary)
-        try:
-            choice = self.client.complete(
-                messages,
-                tools=tools,
-                tool_choice={"type": "function", "function": {"name": "emit_response"}},
-            )
-        except OpenAIError as error:
-            raise MirageRuntimeError(str(error)) from error
-
-        assistant_message = choice.get("message")
-        if not isinstance(assistant_message, dict):
-            raise MirageRuntimeError("Assistant response missing message payload")
-
-        result_payload = self._extract_tool_arguments(assistant_message, "emit_response")
-
-        assistant_summary = json.dumps(result_payload, ensure_ascii=False)
-        self._history.setdefault(function.name, []).extend([
-            {"role": "user", "content": messages[-1]["content"]},
-            {"role": "assistant", "content": assistant_summary},
-        ])
-
-        return_block = result_payload.get("return")
-        if not isinstance(return_block, dict):
-            raise MirageRuntimeError("LLM response missing 'return' object")
-        return_value = return_block.get("value")
-        if not isinstance(return_value, str):
-            raise MirageRuntimeError("LLM response return value must be a string description")
-        summary_note = return_block.get("summary")
-        self.state.remember(
-            statement.target,
-            function.return_type,
-            return_value,
-            note=summary_note if isinstance(summary_note, str) else None,
-        )
-        self._outputs.append(
-            f"ask {function.name} -> {statement.target} [{function.return_type}] = {return_value}"
-        )
-
-        updates = result_payload.get("updates", [])
-        if isinstance(updates, list):
-            for update in updates:
-                if not isinstance(update, dict):
-                    continue
-                target = update.get("target")
-                value = update.get("value")
-                if not isinstance(target, str) or not isinstance(value, str):
-                    continue
-                note = update.get("summary")
-                note_text = note if isinstance(note, str) else None
-                type_hint = update.get("type")
-                if isinstance(type_hint, str):
-                    self.state.remember(target, type_hint, value, note=note_text)
-                else:
-                    try:
-                        self.state.update(target, value, note=note_text)
-                    except KeyError:
-                        self.state.remember(target, "Unknown", value, note=note_text)
-                self._outputs.append(f"update {target} = {value}")
-
-        notes = result_payload.get("notes")
-        if isinstance(notes, list):
-            for note in notes:
-                if isinstance(note, str):
-                    self._outputs.append(f"assistant note: {note}")
-
-    def _seed_inputs(self) -> None:
-        for decl in self.program.inputs:
-            value = self._input_values.get(decl.name)
-            if value is None:
-                raise MirageRuntimeError(
-                    f"Missing value for {decl.kind} '{decl.name}'. Provide one via CLI."
-                )
-            self.state.remember(decl.name, decl.type_hint, value)
-            self._outputs.append(
-                f"input {decl.kind} {decl.name} [{decl.type_hint}] = {value}"
-            )
-        self._inputs_seeded = True
-
-    def _build_arguments(
-        self, arguments: Sequence[CallArgument], function: FunctionDef
-    ) -> List[Dict[str, str]]:
-        payload: List[Dict[str, str]] = []
-        arg_type_lookup = {arg.name: arg.type_hint for arg in function.arguments}
-        provided_names = {argument.name for argument in arguments}
-        missing = [arg.name for arg in function.arguments if arg.name not in provided_names]
-        if missing:
-            raise MirageRuntimeError(
-                f"Call to {function.name} missing arguments: {', '.join(missing)}"
-            )
-        for argument in arguments:
-            type_hint = arg_type_lookup.get(argument.name, "Unknown")
-            if argument.value.is_reference:
-                name = argument.value.reference_name
-                if not name:
-                    raise MirageRuntimeError("Reference argument missing a target name")
-                memory = self.state.recall(name)
-                if memory is None:
-                    raise MirageRuntimeError(f"Argument references unknown memory '{name}'")
-                payload.append(
-                    {
-                        "name": argument.name,
-                        "type": type_hint,
-                        "origin": "memory",
-                        "memory_name": name,
-                        "value": memory.description,
-                    }
-                )
-            else:
-                payload.append(
-                    {
-                        "name": argument.name,
-                        "type": type_hint,
-                        "origin": "literal",
-                        "value": argument.value.raw,
-                    }
-                )
-        return payload
-
-    def _build_messages(
-        self,
-        function: FunctionDef,
-        argument_payload: Sequence[Dict[str, str]],
-        state_summary: str,
-    ) -> List[Dict[str, str]]:
-        developer_message = {
-            "role": "developer",
-            "content": (
-                "You are MirageScript's imagination kernel. Use the `emit_response` tool exactly "
-                "once to respond. Keep answers playful but concise."
-                " Respect memory names exactly as given and avoid inventing new slots or"
-                " dotted variants."
-            ),
-        }
-        argument_lines = []
-        for item in argument_payload:
-            if item["origin"] == "memory":
-                argument_lines.append(
-                    "- {name} [{type}] from memory '{memory}': {value}".format(
-                        name=item["name"],
-                        type=item["type"],
-                        memory=item["memory_name"],
-                        value=item["value"],
-                    )
-                )
-            else:
-                argument_lines.append(f"- {item['name']} [{item['type']}]: {item['value']}")
-        object_lines = []
-        for obj in self.program.objects.values():
-            if not obj.fields:
-                object_lines.append(f"- {obj.name}: (no fields declared)")
+            tool_calls = assistant_message.get("tool_calls")
+            if tool_calls:
+                self._handle_tool_calls(messages, tool_calls)
                 continue
-            field_descriptions = ", ".join(
-                f"{field.name} ({field.type_hint})" for field in obj.fields
-            )
-            object_lines.append(f"- {obj.name}: {field_descriptions}")
-        prompt_text = (
-            f"Function name: {function.name}\n"
-            f"Purpose: {function.prompt}\n\n"
-            f"Return type: {function.return_type}\n\n"
-            f"Arguments:\n" + "\n".join(argument_lines or ["(no arguments)"]) + "\n\n"
-            "Known objects:\n" + "\n".join(object_lines or ["(no objects declared)"]) + "\n\n"
-            f"Current memory:\n{state_summary}\n\n"
-            "Call the `emit_response` tool once with:\n"
-            "- return: object containing optional type, required value, optional summary\n"
-            "- updates: list describing memory adjustments (target, optional type, value, optional"
-            " summary)\n"
-            "- notes: list of playful remarks for the human programmer\n"
-            "Use empty lists when nothing changes. Keep descriptions short and vivid."
-            " When updating memories, target the base memory name (e.g., 'payload') and provide"
-            " its full new description."
-        )
 
-        user_message = {"role": "user", "content": prompt_text}
+            content = assistant_message.get("content")
+            if isinstance(content, str) and content.strip():
+                final_message = content
+                self.outputs.append(content)
+            break
 
-        history = self._history.get(function.name, [])
-        return [developer_message, *history, user_message]
+        return RunResult(outputs=self.outputs, final_message=final_message)
 
-    @staticmethod
-    def _tool_schema() -> Dict[str, Any]:
-        return {
-            "type": "function",
-            "function": {
-                "name": "emit_response",
-                "description": (
-                    "Return the MirageScript function call result, including the main return value,"
-                    " any memory updates, and light-hearted notes for the human."
-                ),
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "return": {
-                            "type": "object",
-                            "properties": {
-                                "type": {"type": "string"},
-                                "value": {"type": "string"},
-                                "summary": {"type": "string"},
-                            },
-                            "required": ["value"],
-                            "additionalProperties": False,
-                        },
-                        "updates": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "target": {"type": "string"},
-                                    "type": {"type": "string"},
-                                    "value": {"type": "string"},
-                                    "summary": {"type": "string"},
-                                },
-                                "required": ["target", "value"],
-                                "additionalProperties": False,
-                            },
-                        },
-                        "notes": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                        },
-                    },
-                    "required": ["return", "updates", "notes"],
-                    "additionalProperties": False,
-                },
-            },
-        }
-
-    @staticmethod
-    def _extract_tool_arguments(message: Dict[str, Any], expected_name: str) -> Dict[str, Any]:
-        tool_calls = message.get("tool_calls")
-        if not isinstance(tool_calls, list) or not tool_calls:
-            raise MirageRuntimeError("Assistant did not call the required tool")
+    def _handle_tool_calls(
+        self,
+        messages: List[Dict[str, Any]],
+        tool_calls: Sequence[Dict[str, Any]],
+    ) -> None:
         for call in tool_calls:
             if not isinstance(call, dict):
-                continue
-            if call.get("type") != "function":
-                continue
+                raise MirageRuntimeError("Tool call payload malformed")
+            call_id = call.get("id")
+            if not isinstance(call_id, str):
+                raise MirageRuntimeError("Tool call missing identifier")
             function = call.get("function")
             if not isinstance(function, dict):
-                continue
-            if function.get("name") != expected_name:
-                continue
-            arguments = function.get("arguments")
-            if not isinstance(arguments, str):
-                raise MirageRuntimeError("Tool arguments missing or malformed")
+                raise MirageRuntimeError("Tool call missing function payload")
+            name = function.get("name")
+            if not isinstance(name, str):
+                raise MirageRuntimeError("Tool call missing function name")
+            arguments_raw = function.get("arguments", "{}")
+            if not isinstance(arguments_raw, str):
+                raise MirageRuntimeError("Tool arguments must be a JSON string")
             try:
-                return json.loads(arguments)
+                arguments = json.loads(arguments_raw) if arguments_raw else {}
             except json.JSONDecodeError as error:
-                raise MirageRuntimeError("Tool arguments were not valid JSON") from error
-        raise MirageRuntimeError("Assistant did not call the expected tool")
+                raise MirageRuntimeError(
+                    f"Assistant provided invalid JSON for {name!r}: {arguments_raw}"
+                ) from error
+
+            result = self._execute_tool(name, arguments)
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "name": name,
+                    "content": json.dumps(result, ensure_ascii=False),
+                }
+            )
+
+    def _execute_tool(self, name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        if name == "emit_output":
+            return self._tool_emit_output(arguments)
+        if name == "list_inputs":
+            return self._tool_list_inputs()
+        if name == "get_input":
+            return self._tool_get_input(arguments)
+        if name == "read_source":
+            return self._tool_read_source()
+        if name == "read_file":
+            return self._tool_read_file(arguments)
+        if name == "save_file":
+            return self._tool_save_file(arguments)
+        if name == "raise_error":
+            self._tool_raise_error(arguments)
+        raise MirageRuntimeError(f"Assistant requested unknown tool '{name}'")
+
+    def _tool_emit_output(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        text = arguments.get("text")
+        if not isinstance(text, str):
+            raise MirageRuntimeError("emit_output requires a string 'text' field")
+        self.outputs.append(text)
+        return {"status": "ok"}
+
+    def _tool_list_inputs(self) -> Dict[str, Any]:
+        return {
+            "arguments": sorted(self.argument_inputs.keys()),
+            "files": sorted(self.file_inputs.keys()),
+        }
+
+    def _tool_get_input(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        name = arguments.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise MirageRuntimeError("get_input requires a non-empty 'name'")
+        kind = arguments.get("kind")
+        if kind is not None and kind not in {"argument", "file"}:
+            raise MirageRuntimeError("get_input kind must be 'argument' or 'file'")
+
+        if kind in (None, "argument") and name in self.argument_inputs:
+            return {
+                "kind": "argument",
+                "name": name,
+                "value": self.argument_inputs[name],
+                "available": True,
+            }
+
+        if kind in (None, "file") and name in self.file_inputs:
+            path = self.file_inputs[name]
+            try:
+                content = path.read_text(encoding="utf-8")
+            except OSError as error:
+                raise MirageRuntimeError(f"Failed to read file input '{name}': {error}")
+            return {
+                "kind": "file",
+                "name": name,
+                "path": str(path),
+                "value": content,
+                "available": True,
+            }
+
+        return {
+            "kind": kind or "unknown",
+            "name": name,
+            "available": False,
+        }
+
+    def _tool_read_source(self) -> Dict[str, Any]:
+        return {
+            "path": str(self.source_path),
+            "content": self.source_text,
+        }
+
+    def _tool_read_file(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        path_value = arguments.get("path")
+        if not isinstance(path_value, str) or not path_value.strip():
+            raise MirageRuntimeError("read_file requires a non-empty 'path'")
+        target = self._resolve_path(path_value)
+        try:
+            content = target.read_text(encoding="utf-8")
+        except OSError as error:
+            return {
+                "path": str(target),
+                "available": False,
+                "error": str(error),
+            }
+        return {"path": str(target), "available": True, "content": content}
+
+    def _tool_save_file(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        path_value = arguments.get("path")
+        content = arguments.get("content")
+        if not isinstance(path_value, str) or not path_value.strip():
+            raise MirageRuntimeError("save_file requires a non-empty 'path'")
+        if not isinstance(content, str):
+            raise MirageRuntimeError("save_file requires string 'content'")
+        target = self._resolve_path(path_value)
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+        except OSError as error:
+            raise MirageRuntimeError(f"Failed to write file '{path_value}': {error}")
+        return {
+            "path": str(target),
+            "bytes_written": len(content.encode("utf-8")),
+        }
+
+    def _tool_raise_error(self, arguments: Dict[str, Any]) -> None:
+        message = arguments.get("message")
+        if not isinstance(message, str) or not message.strip():
+            message = "Interpreter halted as requested by the program."
+        raise MirageRuntimeError(message)
+
+    def _resolve_path(self, path_value: str) -> Path:
+        candidate = Path(path_value).expanduser()
+        if candidate.is_absolute():
+            return candidate
+
+        # Prefer paths relative to the Mirage script directory when the input is not
+        # absolute. This ensures new files created via save_file live alongside the
+        # program rather than the caller's working directory.
+        local_candidate = (self.source_path.parent / candidate).resolve()
+        return local_candidate
+
+    def _system_prompt(self) -> str:
+        return (
+            "You are Mirage, an LLM interpreter."
+            " Read the Mirage program provided by the user and execute it according"
+            " to the language reference."
+            " Use the available tools to fetch inputs, produce output, persist files,"
+            " or abort execution."
+            " You must never execute Python code yourself; instead, rely on the tools."
+            " Emit user-facing lines via emit_output exactly in the order they should"
+            " appear on the terminal."
+            " If the program cannot proceed, call raise_error with a helpful message."
+        )
+
+    def _initial_user_message(self) -> str:
+        argument_names = ", ".join(sorted(self.argument_inputs)) or "(none provided)"
+        file_names = ", ".join(sorted(self.file_inputs)) or "(none provided)"
+        return (
+            f"Program path: {self.source_path}\n"
+            "Program source between <<< and >>> markers."
+            "\n<<<\n"
+            f"{self.source_text}\n"
+            ">>>\n\n"
+            "Inputs advertised by the CLI flags:\n"
+            f"- arguments: {argument_names}\n"
+            f"- files: {file_names}\n"
+            "Use list_inputs and get_input to inspect their values when needed."
+        )
+
+    def _tool_schemas(self) -> Sequence[Dict[str, Any]]:
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "emit_output",
+                    "description": "Append a human-visible line to the terminal output.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "text": {
+                                "type": "string",
+                                "description": "Line to print back to the programmer.",
+                            }
+                        },
+                        "required": ["text"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_inputs",
+                    "description": "List the available argument and file input names.",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_input",
+                    "description": (
+                        "Fetch the value for a declared argument or file input."
+                        " File inputs return their full text content."
+                    ),
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "kind": {
+                                "type": "string",
+                                "enum": ["argument", "file"],
+                                "description": "Optional explicit input kind.",
+                            },
+                        },
+                        "required": ["name"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_source",
+                    "description": "Retrieve the entire Mirage source file again if needed.",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_file",
+                    "description": "Read an arbitrary UTF-8 text file relative to the program path.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string"},
+                        },
+                        "required": ["path"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "save_file",
+                    "description": "Write UTF-8 content to a file relative to the program path.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string"},
+                            "content": {"type": "string"},
+                        },
+                        "required": ["path", "content"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "raise_error",
+                    "description": "Abort execution and surface a message to the human programmer.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "message": {"type": "string"},
+                        },
+                        "required": ["message"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+        ]

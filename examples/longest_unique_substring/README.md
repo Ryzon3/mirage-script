@@ -1,27 +1,16 @@
-# Longest Substring Without Repeating Characters
+# Longest Unique Substring
 
-MirageScript tackles the sliding-window classic from LeetCode.
+Sliding-window reasoning, but with bedtime storytelling. This MirageScript example asks the model to find the longest substring without repeating characters.
 
-## Problem sketch
-Given a string, determine the length of the longest substring that contains no repeated characters, and provide one such substring.
+## Flow overview
+- `remember report` sets up a narrative placeholder for the current best window.
+- The helper prompt walks `gpt-5-mini` through a sliding-window strategy and asks for a summary.
+- `show` ensures the final explanation reaches the terminal via `emit_output`.
 
-## Runtime flow
-- `mystery` holds the input string plus placeholders for the answer and the reasoning.
-- `find_longest_unique` asks `gpt-5-mini` to simulate the sliding-window scan, update `mystery.length` and `mystery.snippet`, and announce the result.
-- `explain_window` records how the window moved and stores the narrative in `mystery.reasoning`.
-- `show` prints the headline, the explanation, and the final memory snapshot.
-
-## Expected transcript
-Sample run via `uv run mirage examples/longest_unique_substring/longest_unique_substring.mirage --dump-state --arg text=pwwkew`:
+## Running the demo
 ```
-input argument text [Text] = pwwkew
-remembered mystery [SubstringCase] = text: pwwkew; length: 0; snippet: (none); reasoning: (none)
-ask find_longest_unique -> headline [Text] = Longest unique substring has length 3: "wke".
-update mystery = text: pwwkew; length: 3; snippet: wke; reasoning: (none)
-ask explain_window -> detail [Text] = Sweep the window across pwwkew: start with p, drop the first w when a duplicate appears, expand to wke for length 3 before another duplicate forces a shift.
-update mystery = text: pwwkew; length: 3; snippet: wke; reasoning: Sweep the window across pwwkew: start with p, drop the first w when a duplicate appears, expand to wke for length 3 before another duplicate forces a shift.
-show: headline [Text] = Longest unique substring has length 3: "wke".
-show: detail [Text] = Sweep the window across pwwkew: start with p, drop the first w when a duplicate appears, expand to wke for length 3 before another duplicate forces a shift.
-show: mystery [SubstringCase] = text: pwwkew; length: 3; snippet: wke; reasoning: Sweep the window across pwwkew: start with p, drop the first w when a duplicate appears, expand to wke for length 3 before another duplicate forces a shift.
+uv run mirage examples/longest_unique_substring/longest_unique_substring.mirage --arg text=pwwkew
 ```
-Expect small phrasing changes, but the algorithmic idea stays true.
+You should see a short adventure describing how the window expands and contracts, concluding with the winning substring. The precise sentences change per run, but the core facts—characters examined, window length, final answer—remain.
+
+Add stricter wording inside the helper prompt if you want bullet lists or JSON output instead of free-form prose.

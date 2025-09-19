@@ -1,5 +1,7 @@
 story "Longest Unique Substring"
 
+# Provide technical narration only and end after emitting the requested outputs.
+
 object SubstringCase:
   has text (Text) meaning "input string"
   has length (Int) meaning "best length"
@@ -16,6 +18,7 @@ helper find_longest_unique returns Text:
 Use the sliding-window idea to find the longest substring without repeated characters.
 Share the length and give one example substring.
 Rewrite the case memory so the length and snippet fields contain your discoveries.
+Report the findings in a short factual sentence (for example, "Best length: 3, substring: 'abc'").
 >>>
 
 helper explain_window returns Text:
@@ -24,6 +27,7 @@ helper explain_window returns Text:
   prompt:
 <<<
 In a short paragraph, describe how the window slid around, mentioning when duplicates appeared.
+Write in an objective, technical tone and avoid dramatic language.
 Store this explanation inside case.reasoning and return the same text.
 >>>
 

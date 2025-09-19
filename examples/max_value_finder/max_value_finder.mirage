@@ -1,5 +1,7 @@
 story "Maximum Value Finder"
 
+# Use emit_output for the lines requested by `show` and finish without extra recap text.
+
 object NumberPile:
   has items (List<Int>) meaning "numbers waiting their turn"
   has champion (Int) meaning "current best number"
@@ -11,9 +13,10 @@ helper pick_champion returns Int:
   needs pile (NumberPile)
   prompt:
 <<<
-Look through pile.items, decide which number is greatest, and announce the winner joyfully.
+Review pile.items and identify the largest number.
+Respond with a single factual sentence such as "Largest value: 28" and avoid exclamation marks or playful wording.
 Update pile.champion in your response so future calls know the best number.
-Call emit_response with a playful return value and mention the winning number numerically.
+Call emit_response with that concise sentence and include the numeric winner.
 >>>
 
 helper describe_numbers returns Text:
@@ -21,8 +24,7 @@ helper describe_numbers returns Text:
   needs numbers (List<Int>)
   prompt:
 <<<
-Write a short friendly sentence that mentions the label and lists the numbers clearly.
-Keep everything under 25 words.
+Return a short neutral sentence that mentions the label and lists the numbers in brackets, for example "Input numbers: [1, 2, 3]".
 >>>
 
 begin:

@@ -1,14 +1,14 @@
 # MirageScript Interpreter
 
-MirageScript is a story-driven language where functions are prompts and `gpt-5-mini` hallucinates the runtime. The interpreter keeps a mutable memory table, forwards context to the model, and applies any updates described in the JSON reply.
+MirageScript is a story-driven language where functions are prompts and `gpt-5-mini` performs the actual interpretation. The CLI now hands the full program file to the model and waits for tool calls that request inputs, read or write files, emit terminal output, or halt with an error. Python only brokers those tools — it no longer walks the script or mutates runtime state on its own.
 
 ## Highlights
 - Lightweight MirageScript syntax (`remember`, `ask`, `show`, `note`) that reads like bedtime instructions.
 - Function definitions contain prompts wrapped in `<<< >>>` so writers never touch real code.
-- Runtime state persists between calls; the model can mutate memories through structured JSON updates.
-- Pure Python implementation that only relies on the OpenAI HTTP endpoint.
-- Tool-calling contract forces `gpt-5-mini` to yield well-formed results via the `emit_response` function.
-- Declarative `inputs:` block plus `--arg` / `--file` flags feed dynamic values into memories before execution.
+- The model consumes the entire program text and drives execution through structured tool calls.
+- Python stays in charge of side effects only: reading inputs, saving files, printing output, or surfacing errors on demand.
+- Tool-calling contract exposes `emit_output`, `get_input`, `list_inputs`, `read_source`, `read_file`, `save_file`, and `raise_error` — everything else is up to the model.
+- CLI `--arg` / `--file` flags advertise dynamic values that the model can pull with `get_input` when it needs them.
 
 ## Quick start
 1. Ensure your `.env` file contains `OPENAI_API_KEY` (the CLI loads it automatically).
@@ -18,7 +18,7 @@ MirageScript is a story-driven language where functions are prompts and `gpt-5-m
    ```
 3. Run a Mirage program (requires access to the OpenAI API):
    ```bash
-   uv run mirage examples/max_value_finder/max_value_finder.mirage --dump-state --arg numbers="[3, 14, 7, 28]"
+   uv run mirage examples/max_value_finder/max_value_finder.mirage --arg numbers="[3, 14, 7, 28]"
    ```
 
 > Supply runtime values with `--arg name=value` (and `--file name=path` for file-based inputs).
@@ -51,15 +51,4 @@ If Ruff is not pre-installed, the command will try to download it from PyPI.
 Each subfolder contains a `.mirage` file and a markdown explainer.
 
 ## Example transcript
-Executing `examples/max_value_finder/max_value_finder.mirage --arg numbers="[3, 14, 7, 28]"` prints:
-```
-input argument numbers [List<Int>] = [3, 14, 7, 28]
-remembered pile [NumberPile] = items: [3, 14, 7, 28]; champion: 0
-remembered tag [Text] = Input numbers
-ask describe_numbers -> story [Text] = ...
-ask pick_champion -> biggest [Int] = ...
-show: story [Text] = ...
-show: biggest [Int] = ...
-show: pile [NumberPile] = ...
-```
-Each `...` is invented by `gpt-5-mini` at temperature 1.0.
+Executing `examples/max_value_finder/max_value_finder.mirage --arg numbers="[3, 14, 7, 28]"` now produces whatever narration and bookkeeping the model decides to emit via `emit_output`. Expect the exact lines (and their ordering) to vary between runs because `gpt-5-mini` is in full control of the runtime.

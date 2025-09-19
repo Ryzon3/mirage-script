@@ -1,5 +1,7 @@
 story "Add Two Numbers"
 
+# Keep responses factual and finish after the requested show commands.
+
 object LinkedLists:
   has list_a (List<Int>) meaning "digits for the first number (reverse order)"
   has list_b (List<Int>) meaning "digits for the second number (reverse order)"
@@ -14,7 +16,7 @@ helper add_lists returns Text:
   needs data (LinkedLists)
   prompt:
 <<<
-Add the two reversed digit lists together like the LeetCode problem. Mention the full equation and the resulting digit list.
+Add the two reversed digit lists together like the LeetCode problem. Mention the full equation and the resulting digit list using plain, matter-of-fact wording.
 Rewrite data.result with the exact list of digits you produce.
 >>>
 
@@ -24,6 +26,7 @@ helper explain_carries returns Text:
   prompt:
 <<<
 Describe how the addition worked column by column. Mention carries and remind the reader that the digits are reversed.
+Keep the tone technical and avoid embellishment.
 Store the explanation in data.carry_notes and return the same text.
 >>>
 

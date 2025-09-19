@@ -1,5 +1,6 @@
 story "Two Sum Solver"
 
+# Emit only the requested lines and avoid extra summaries at the end.
 object NumberQuest:
   has numbers (List<Int>) meaning "numbers under investigation"
   has target (Int) meaning "desired sum"
@@ -15,7 +16,8 @@ helper pick_pair returns Text:
 <<<
 Solve the classic Two Sum puzzle. Pick two distinct indices (0-based) whose values add up to quest.target.
 Choose the first valid pair in ascending index order.
-Call emit_response with a sentence like "Indices 0 and 1 (2 + 7) reach 9." and rewrite quest.match so it remembers the pair as "(i, j)".
+Return a single declarative sentence of the form "Indices 0 and 1 (2 + 7) reach 9." without extra commentary or exclamation.
+Rewrite quest.match so it remembers the pair as "(i, j)".
 >>>
 
 helper verify_pair returns Text:
@@ -23,8 +25,8 @@ helper verify_pair returns Text:
   needs answer (Text)
   prompt:
 <<<
-Confirm that the answer really hits the target. Restate the check in one short sentence.
-If something is off, gently say so instead of pretending.
+Confirm that the answer really hits the target. Restate the check in one short sentence using neutral tone.
+If something is off, say so plainly instead of pretending.
 >>>
 
 begin:

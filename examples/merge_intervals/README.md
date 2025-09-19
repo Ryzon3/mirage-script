@@ -1,28 +1,14 @@
 # Merge Intervals
 
-A MirageScript rendition of the merge-intervals algorithmic classic.
+This MirageScript example narrates how overlapping intervals collapse into a tidy schedule.
 
-## Problem sketch
-Given a list of inclusive integer intervals, merge the overlapping ones and keep the result sorted by starting point.
+## Flow overview
+- `remember planner` seeds the scenario with the original intervals and a blank summary.
+- The helper prompt tells `gpt-5-mini` to sort, merge, and explain each combination step.
+- `show` encourages the interpreter to emit the merged intervals and a recap for the human.
 
-## Runtime flow
-- `garden` holds the original interval list and placeholders for a merged list plus a narrative.
-- `prune_overlaps` directs `gpt-5-mini` to merge overlaps and store the canonical merged list.
-- `narrate_pruning` captures a short human explanation and saves it inside `garden.narrative`.
-- `show` logs the merged output, the story, and the final memory state.
-
-## Expected transcript
-Typical output from `uv run mirage examples/merge_intervals/merge_intervals.mirage --dump-state --arg intervals="[[1,3], [2,6], [8,10], [15,18]]"`:
+## Running the demo
 ```
-input argument intervals [List<List<Int>>] = [[1,3], [2,6], [8,10], [15,18]]
-remembered garden [IntervalGarden] = intervals: [[1,3], [2,6], [8,10], [15,18]]; merged: (empty); narrative: (none)
-note: Time to clean up overlapping appointments.
-ask prune_overlaps -> merged [Text] = [[1, 6], [8, 10], [15, 18]] — merged 1 overlap.
-update garden = intervals: [[1,3], [2,6], [8,10], [15,18]]; merged: [[1, 6], [8, 10], [15, 18]]; narrative: (none)
-ask narrate_pruning -> story [Text] = Sorted intervals then merged [1,3] with [2,6] to form [1,6]; the rest stayed separate at [8,10] and [15,18].
-update garden = intervals: [[1,3], [2,6], [8,10], [15,18]]; merged: [[1, 6], [8, 10], [15, 18]]; narrative: Sorted intervals then merged [1,3] with [2,6] to form [1,6]; the rest stayed separate at [8,10] and [15,18].
-show: merged [Text] = [[1, 6], [8, 10], [15, 18]] — merged 1 overlap.
-show: story [Text] = Sorted intervals then merged [1,3] with [2,6] to form [1,6]; the rest stayed separate at [8,10] and [15,18].
-show: garden [IntervalGarden] = intervals: [[1,3], [2,6], [8,10], [15,18]]; merged: [[1, 6], [8, 10], [15, 18]]; narrative: Sorted intervals then merged [1,3] with [2,6] to form [1,6]; the rest stayed separate at [8,10] and [15,18].
+uv run mirage examples/merge_intervals/merge_intervals.mirage --arg intervals="[[1,3], [2,6], [8,10], [15,18]]"
 ```
-The model handles the merging logic while the interpreter tracks state.
+Look for a narration that highlights where overlaps occur and what the merged output looks like. Tone and phrasing change each run, but the merged list should remain consistent with the algorithm.

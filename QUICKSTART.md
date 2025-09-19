@@ -1,27 +1,33 @@
 # MirageScript Quickstart
 
-Welcome! This quick tour shows how to write and run MirageScript files using the new, story-like syntax.
+The Mirage CLI now hands your entire `.mirage` file to `gpt-5-mini`, then steps aside. The model interprets every instruction, calls the available tools, and writes the terminal output via `emit_output`. This quick tour shows a few scripts that play nicely with the LLM interpreter.
 
-## 1. Hello Mirage (no helpers required)
-Create `hello.mirage` with the following contents:
+## 1. Hello Mirage
+Create `hello.mirage` with a short story:
 
 ```
 story "Hello Mirage"
 
 begin:
-  remember greeting as Text with "Hello from MirageScript!"
-  note "Let’s share what we remembered."
+  note "Introduce the project."
   show greeting
+```
+
+Add a comment near the top (optional) reminding the model what the verbs mean:
+
+```
+# Interpret `note` as a narrator aside. Use emit_output to share it.
+# Interpret `show X` as printing a memory or idea named X.
 ```
 
 Run it:
 ```bash
-uv run mirage hello.mirage --dump-state
+uv run mirage hello.mirage
 ```
-You should see the note, the greeting, and the final memory snapshot.
+Expect a couple of lines describing the greeting—exact wording varies every run.
 
-## 2. Friendly Greeter (using a helper)
-Save this as `friendly_greeter.mirage` next to the first program:
+## 2. Friendly Greeter (helper prompt)
+`gpt-5-mini` reads helper prompts too, so you can stash reusable instructions inside them.
 
 ```
 story "Friendly Greeter"
@@ -33,9 +39,7 @@ helper compose_greeting returns Text:
   needs friend (Friend)
   prompt:
 <<<
-Say hello to friend.name using a cheerful, single-sentence message.
-Mention their name and a short compliment.
-Call emit_response with the sentence and leave other memories unchanged.
+Compose a one-sentence hello for friend.name. Call emit_output with the final line.
 >>>
 
 begin:
@@ -46,15 +50,14 @@ begin:
   show message
 ```
 
-Execute it:
+Run:
 ```bash
-uv run mirage friendly_greeter.mirage --dump-state
+uv run mirage friendly_greeter.mirage
 ```
-The helper will ask `gpt-5-mini` to craft the greeting and store it in `message`.
-## 3. Reading inputs at runtime
-To solve algo-style problems you can declare inputs and pass them on the command line.
+You should see a cheerful greeting for Jamie. The helper prompt nudges the model to call `emit_output` before finishing.
 
-Create `two_sum_quickstart.mirage`:
+## 3. Reading CLI arguments on demand
+Describe arguments in the `inputs:` block and fetch them with `get_input` when needed.
 
 ```
 story "Two Sum Quickstart"
@@ -62,7 +65,6 @@ story "Two Sum Quickstart"
 object NumberQuest:
   has numbers (List<Int>) meaning "candidate values"
   has target (Int) meaning "desired sum"
-  has match (Pair<Int>) meaning "solution indices"
 
 inputs:
   argument numbers as List<Int> with "Numbers to examine"
@@ -72,27 +74,25 @@ helper find_pair returns Text:
   needs quest (NumberQuest)
   prompt:
 <<<
-Find two indices whose values add up to quest.target. Choose the first valid pair in ascending order.
-Call emit_response with the pair and update quest.match to remember it.
+Find two indices whose values add to quest.target. When you have them, call emit_output with the pair and a short explanation.
 >>>
 
 begin:
-  remember quest as NumberQuest with "numbers: {numbers}; target: {target}; match: (unknown)"
+  remember quest as NumberQuest with "numbers: {numbers}; target: {target}"
   ask find_pair for:
     quest is memory quest
   keep answer as summary
   show summary
-  show quest
 ```
 
-Run it with arguments:
+Run it:
 ```bash
 uv run mirage two_sum_quickstart.mirage --arg numbers="[2, 7, 11, 15]" --arg target=9
 ```
+The model will call `get_input` for `numbers` and `target`, reason about them, and narrate a solution.
 
-The interpreter seeds the `numbers` and `target` memories before running the rest of the script, letting the helper operate on dynamic inputs.
-## 4. Reading file inputs
-Inputs can also pull data from files. Create `dataset_input.mirage` alongside a text file:
+## 4. Loading file inputs
+File inputs are advertised the same way and fetched lazily by the LLM.
 
 ```
 story "Sum From File"
@@ -104,36 +104,28 @@ helper compute_sum returns Text:
   needs dataset (Text)
   prompt:
 <<<
-Split dataset into integers separated by spaces. Compute their total and call emit_response with:
-- return: sentence stating the sum
-- updates: []
-- notes: optional reminder about the data
+Split dataset into integers separated by spaces. Report their sum through emit_output.
 >>>
 
 begin:
+  note "Add the values contained in the dataset file."
   ask compute_sum for:
     dataset is memory dataset
   keep answer as summary
   show summary
-  show dataset
 ```
 
-Create a sample file:
+Create a sample file and run it:
 ```bash
 printf "4 9 15 6" > numbers.txt
+uv run mirage dataset_input.mirage --file dataset=numbers.txt
 ```
+The helper will request the file contents and produce a narrated total.
 
-Run with the file input:
-```bash
-uv run mirage dataset_input.mirage --dump-state --file dataset=numbers.txt
-```
+## Tips
+- Annotate scripts with short comments explaining how to treat each verb; the model reads them verbatim.
+- Keep helper prompts explicit about when to call `emit_output`, especially if you expect multiple lines of output.
+- Inputs are on-demand; if the program never calls `get_input`, the CLI never reads the file or argument.
+- Outputs differ between runs. If you need deterministic data, instruct the helper to stick to a strict format.
 
-The interpreter reads `numbers.txt`, stores its contents in the `dataset` memory, and feeds it to the helper.
-
-## 5. Tips
-- Keep literal text inside quotes; use `memory name` when you want to pass an existing memory.
-- Prompts can be playful—tell the model exactly what tone or structure you want.
-- `--dump-state` is handy while experimenting; remove it when you just want the log.
-- Supply declared inputs with `--arg name=value` and `--file name=path` (file contents load as strings).
-
-Ready for more? Explore the LeetCode-flavoured examples inside `examples/` or skim `LANGUAGE_REFERENCE.md` for the full language guide.
+Ready for more? Explore the example programs in `examples/` or skim `LANGUAGE_REFERENCE.md` for a deeper discussion of the tool contract.

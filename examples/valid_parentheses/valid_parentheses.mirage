@@ -1,5 +1,7 @@
 story "Valid Parentheses"
 
+# Use neutral wording and do not add wrap-up text beyond the requested outputs.
+
 object BracketPuzzle:
   has sequence (Text) meaning "string of (), {}, [] characters"
   has verdict (Text) meaning "balanced?"
@@ -13,7 +15,7 @@ helper assess_balance returns Text:
   prompt:
 <<<
 Pretend you are running the stack algorithm to check if the brackets are balanced.
-Say "Balanced" or "Not balanced" and give a short reason.
+Say "Balanced" or "Not balanced" and give a short reason in neutral language.
 Set puzzle.verdict to the word you choose, leaving reasoning blank for now.
 >>>
 
@@ -23,6 +25,7 @@ helper explain_balance returns Text:
 <<<
 Explain in one or two sentences how the imaginary stack moved.
 Mention pushes, pops, and the moment balance succeeded or failed.
+Use straightforward wording without theatrics.
 Store the sentence in puzzle.reasoning and return it.
 >>>
 
