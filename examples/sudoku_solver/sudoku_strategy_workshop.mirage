@@ -1,0 +1,179 @@
+story "Sudoku Strategy Workshop"
+
+# Guide the LLM through analysing a Sudoku puzzle, planning techniques, producing
+# a solved grid, and saving the result for the user. Follow the same emit-on-show
+# convention as other programs.
+
+object SolverRequest:
+  has puzzle_name (Text) meaning "identifier for the puzzle"
+  has difficulty (Text) meaning "difficulty label provided by the user"
+  has target_style (Text) meaning "narrative expectations for explanations"
+  has input_path (Text) meaning "stem used when naming the output file"
+  has output_path (Text) meaning "resolved path for the solved puzzle"
+  has highlights (Text) meaning "key insights gathered while solving"
+
+object PuzzleState:
+  has grid (Text) meaning "current Sudoku grid as rows"
+  has empty_cells (Int) meaning "count of unsolved cells"
+  has strategies (Text) meaning "techniques applied so far"
+  has progress_notes (Text) meaning "running commentary on progress"
+
+object SolverArtifacts:
+  has plan (Text) meaning "step-by-step solving outline"
+  has solving_log (Text) meaning "narrative of moves and deductions"
+  has solution (Text) meaning "final solved grid"
+  has qa_report (Text) meaning "consistency checks before completion"
+
+inputs:
+  argument puzzle_name as Text with "Label for the puzzle (e.g., Guardian-2024-04-08)"
+  argument difficulty as Text with "Difficulty setting to frame the strategy"
+  argument target_style as Text with "Tone for explanations (e.g., Educational, Succinct)"
+  argument output_stub as Text with "Filename stem for the solved output"
+  file puzzle as Text with "Sudoku grid (nine rows of digits and zeros for blanks)"
+
+helper determine_output_path returns Text:
+  needs request (SolverRequest) meaning "metadata about the solving session"
+  prompt:
+<<<
+Combine request.input_path with the source and target details to produce a descriptive
+file name. Use the pattern "solutions/{request.input_path}_{request.puzzle_name}_solution.txt".
+Replace whitespace with underscores and lowercase everything. Store the full path inside
+request.output_path and return a sentence such as "Will write solution to solutions/demo_guardian_easy_solution.txt".
+>>>
+
+helper parse_puzzle returns Text:
+  needs request (SolverRequest) meaning "session metadata"
+  needs puzzle_text (Text) meaning "raw puzzle file contents"
+  needs state (PuzzleState) meaning "mutable puzzle state"
+  prompt:
+<<<
+Review puzzle_text. Confirm it has nine rows of nine characters consisting of digits 0-9.
+Count how many zeros (empty cells) the puzzle contains. Populate state.grid with the raw
+rows (joined by newlines), state.empty_cells with the count, and state.progress_notes with
+a short diagnostic summary. Set request.highlights to mention notable structures,
+such as a dense band or identical numbers in a subgrid. Return a concise classification
+sentence (for example, "Puzzle recognised as standard 9x9 Sudoku with 51 empty cells").
+>>>
+
+helper prepare_strategy returns Text:
+  needs request (SolverRequest) meaning "session metadata"
+  needs state (PuzzleState) meaning "current puzzle context"
+  needs artifacts (SolverArtifacts) meaning "scratch space for plan and outputs"
+  prompt:
+<<<
+Design a solving plan tailored to request.difficulty and request.target_style. Include
+numbered steps highlighting specific techniques (e.g., scanning, singles, pairs,
+hidden triples). Store the outline in artifacts.plan as enumerated lines. Add a brief
+summary of the intended approach to state.strategies. Return a one-sentence overview of
+the plan so the `show` statement can emit it.
+>>>
+
+helper solve_puzzle returns Text:
+  needs request (SolverRequest) meaning "session metadata"
+  needs state (PuzzleState) meaning "puzzle context"
+  needs artifacts (SolverArtifacts) meaning "workspace for solving outputs"
+  needs puzzle_text (Text) meaning "raw puzzle grid"
+  prompt:
+<<<
+Solve the Sudoku described by puzzle_text. Document key deductions in a short narrative
+aligned with request.target_style and append them to artifacts.solving_log (use bullet
+points or brief sentences). Produce the final solved grid as nine rows of digits separated
+by newlines, storing it in artifacts.solution. Update state.grid to match the solved grid,
+set state.empty_cells to 0, and enrich state.progress_notes with a closing remark.
+Return a summary sentence mentioning the techniques that unlocked the puzzle.
+>>>
+
+helper analyse_progress returns Text:
+  needs state (PuzzleState) meaning "puzzle context"
+  needs artifacts (SolverArtifacts) meaning "workspace for outputs"
+  prompt:
+<<<
+Create a brief reflection (2-3 sentences) describing how the puzzle progressed from the
+initial state to the solved grid. Mention the reduction in empty cells, pivotal moves, and
+updates to state.strategies. Store the reflection in artifacts.solving_log by appending it
+(after a blank line). Return the reflection so it can be displayed.
+>>>
+
+helper run_quality_gate returns Text:
+  needs artifacts (SolverArtifacts) meaning "workspace for outputs"
+  needs state (PuzzleState) meaning "final puzzle state"
+  prompt:
+<<<
+Verify the solved grid meets Sudoku constraints. Check each row, column, and 3x3 subgrid
+for digits 1-9 without repetition. Summarise the checks as bullet points and store them in
+artifacts.qa_report. Return a short sentence noting the number of checks performed and
+whether they passed.
+>>>
+
+helper commit_solution returns Text:
+  needs request (SolverRequest) meaning "session metadata"
+  needs artifacts (SolverArtifacts) meaning "workspace for outputs"
+  prompt:
+<<<
+Write artifacts.solution to request.output_path using the save_file tool. The file should
+contain the final grid followed by a blank line and the QA report bullet points. Return a
+confirmation sentence referencing the saved path.
+>>>
+
+helper produce_summary returns Text:
+  needs request (SolverRequest) meaning "session metadata"
+  needs state (PuzzleState) meaning "final puzzle state"
+  needs artifacts (SolverArtifacts) meaning "workspace for outputs"
+  prompt:
+<<<
+Generate a three-sentence summary:
+1. Cite request.puzzle_name, request.difficulty, and the final empty cell count.
+2. Highlight the key strategies captured in artifacts.plan and artifacts.solving_log.
+3. Direct the user to check request.output_path for the solved grid and QA report.
+Return the summary for display.
+>>>
+
+begin:
+  remember request as SolverRequest with "puzzle_name: {puzzle_name}; difficulty: {difficulty}; target_style: {target_style}; input_path: {output_stub}; output_path: (unset); highlights: (pending)"
+  remember state as PuzzleState with "grid: (unparsed); empty_cells: 81; strategies: (unplanned); progress_notes: (none)"
+  remember artifacts as SolverArtifacts with "plan: (unset); solving_log: (empty); solution: (unsolved); qa_report: (pending)"
+  note with "Inspect the puzzle, craft a plan, solve it, and write the solution to disk."
+  ask determine_output_path for:
+    request is memory request
+  keep answer as path_overview
+  show path_overview
+  ask parse_puzzle for:
+    request is memory request
+    puzzle_text is file puzzle
+    state is memory state
+  keep answer as puzzle_report
+  show puzzle_report
+  ask prepare_strategy for:
+    request is memory request
+    state is memory state
+    artifacts is memory artifacts
+  keep answer as plan_summary
+  show plan_summary
+  ask solve_puzzle for:
+    request is memory request
+    state is memory state
+    artifacts is memory artifacts
+    puzzle_text is file puzzle
+  keep answer as solve_summary
+  show solve_summary
+  ask analyse_progress for:
+    state is memory state
+    artifacts is memory artifacts
+  keep answer as progress_summary
+  show progress_summary
+  ask run_quality_gate for:
+    artifacts is memory artifacts
+    state is memory state
+  keep answer as qa_summary
+  show qa_summary
+  ask commit_solution for:
+    request is memory request
+    artifacts is memory artifacts
+  keep answer as save_confirmation
+  show save_confirmation
+  ask produce_summary for:
+    request is memory request
+    state is memory state
+    artifacts is memory artifacts
+  keep answer as final_summary
+  show final_summary

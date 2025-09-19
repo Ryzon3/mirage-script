@@ -9,7 +9,7 @@ Pick out the largest number from a list while documenting the intermediate reaso
 - `remember` introduces the `pile` memory with both the incoming numbers and a champion placeholder.
 - `describe_numbers` asks the model to summarize the list before any computation happens and binds the CLI input explicitly with `numbers is argument numbers`.
 - `pick_champion` asks `gpt-5-mini` to select the biggest number and explain the choice.
-- `show` lines remind the interpreter to call `emit_output` so readers see the explanation, the winning number, and the refreshed memory.
+- `show` lines prompt the interpreter to emit the stored explanation, the winning number, and the refreshed memory exactly once.
 
 ## Running the demo
 ```
@@ -20,4 +20,4 @@ Because the LLM drives execution, the exact transcript changes from run to run. 
 - an explanation of the selected maximum, and
 - a description of the updated `pile` memory.
 
-Encourage consistent output by keeping comments and prompt instructions explicit about when to call `emit_output`.
+Encourage consistent output by keeping comments clear about which memories the `show` statements should emit.

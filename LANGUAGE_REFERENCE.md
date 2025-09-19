@@ -37,7 +37,7 @@ Within the `begin` block, keep statements keyword-driven:
 - `note with "Message."` documents intent or intermediate reasoning.
 - `ask helper_name for:` introduces a call. Indent bindings using `parameter is memory saved_label`, `parameter is argument cli_name`, or `parameter is file cli_name`.
 - `keep answer as label` names the most recent helper response.
-- `show label` or `show memory label` requests a visible output (the helper should call `emit_output`).
+- `show label` or `show memory label` requests a visible output. Helpers normally return text; the `show` statement prompts the model to emit it once via `emit_output`.
 - `raise error with "Message."` is a conventional phrasing the model can convert into a `raise_error` tool call if needed.
 
 ### Objects
@@ -86,7 +86,7 @@ Look through pile.items, decide which number is greatest, and provide a concise 
 >>>
 ```
 
-Prompts can be as structured or conversational as you need. Because *the same model* reads the script and executes it, treat helper bodies as reusable sub-instructions rather than remote calls.
+Prompts can be as structured or conversational as you need. Because *the same model* reads the script and executes it, treat helper bodies as reusable sub-instructions rather than remote calls. When the surrounding program issues a `show` instruction, prefer returning the desired text from the helper and let the `show` step call `emit_output` to avoid duplicate lines.
 
 ### Begin block
 
@@ -117,6 +117,7 @@ The only way the model can affect the outside world is by calling the tools expo
 | `raise_error` | Abort execution and surface a message to the user. | `{ "message": "Something went wrong" }` |
 
 Every user-facing line **must** flow through `emit_output`; returning plain assistant text ends the session and prints the final message verbatim. When calling `get_input`, include the `kind` field to avoid ambiguity between arguments and files.
+Most helpers return text and let surrounding `show` statements emit it. Reserve direct `emit_output` calls for situations where the program needs to stream information immediately without storing it first.
 
 `read_file` always returns whether the file was available; if `available` is `False`, the payload also carries an `error` string so the model can decide how to proceed.
 

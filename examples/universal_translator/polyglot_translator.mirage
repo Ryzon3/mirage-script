@@ -1,0 +1,164 @@
+story "Polyglot Translation Workshop"
+
+# Translate documents across natural and programming languages while producing
+# a structured plan, quality report, and persisted output file.
+# Treat `show X` as: retrieve memory X and emit it exactly once via emit_output.
+# Helpers should return text; the show steps handle printing.
+
+object TranslationRequest:
+  has source_language (Text) meaning "language of the input file"
+  has target_language (Text) meaning "language that should be produced"
+  has tone (Text) meaning "preferred tone or style"
+  has context (Text) meaning "detected domain and use case"
+  has input_path (Text) meaning "stem used to name the output file"
+  has output_path (Text) meaning "final path where the translation will be saved"
+
+object DocumentProfile:
+  has kind (Text) meaning "detected document category (narrative, legal, code, etc.)"
+  has audience (Text) meaning "intended reader persona"
+  has terminology (Text) meaning "important terms to preserve or adapt"
+  has risks (Text) meaning "pitfalls to monitor during translation"
+
+object TranslationArtifacts:
+  has outline (Text) meaning "step-by-step translation plan"
+  has translation (Text) meaning "final translated document"
+  has qa_notes (Text) meaning "quality checks and open issues"
+
+inputs:
+  argument source_language as Text with "Source language identifier"
+  argument target_language as Text with "Destination language identifier"
+  argument tone as Text with "Desired tone or register for the translation"
+  argument output_stub as Text with "Filename stem for the translated output"
+  file document as Text with "Document content to translate"
+
+helper determine_output_path returns Text:
+  needs request (TranslationRequest) meaning "current translation metadata"
+  prompt:
+<<<
+Derive a deterministic output path for the translated file.
+Use request.input_path to obtain a stem that already excludes extensions.
+Construct "translations/{stem}_{request.source_language}_to_{request.target_language}.txt".
+Lowercase language names, replace whitespace with underscores, and keep punctuation minimal.
+Update request.output_path with the final path string.
+Return a sentence such as "Saving translation to translations/demo_en_to_es.txt" so the show step can emit it.
+>>>
+
+helper inspect_source returns Text:
+  needs request (TranslationRequest) meaning "translation metadata"
+  needs document_text (Text) meaning "raw input document"
+  needs profile (DocumentProfile) meaning "mutable profile record"
+  prompt:
+<<<
+Review document_text and classify its domain: narrative, technical documentation, legal policy, marketing copy, source code, or other.
+Determine the intended audience and any critical terminology that must be preserved.
+Identify risks such as idioms, cultural references, code comments, or syntax constructs that require special handling.
+Populate profile.kind, profile.audience, profile.terminology, and profile.risks with short phrases.
+Update request.context to summarise the detected domain.
+Return a concise report covering the classification, key terminology, and risks; the show step will emit it.
+>>>
+
+helper prepare_plan returns Text:
+  needs request (TranslationRequest) meaning "translation metadata"
+  needs profile (DocumentProfile) meaning "classified profile"
+  needs artifacts (TranslationArtifacts) meaning "workspace for plan and outputs"
+  prompt:
+<<<
+Design a translation plan tailored to profile.kind and the requested tone.
+Outline the steps you will take, including terminology management, style retention, and any code-specific transformations if profile.kind is "source code".
+Store the structured outline in artifacts.outline using enumerated steps.
+Return a short summary of the plan (one or two sentences). The show step will emit it.
+>>>
+
+helper translate_document returns Text:
+  needs request (TranslationRequest) meaning "translation metadata"
+  needs profile (DocumentProfile) meaning "document classification"
+  needs artifacts (TranslationArtifacts) meaning "workspace for translations"
+  needs document_text (Text) meaning "raw input document"
+  prompt:
+<<<
+Produce the full translation of document_text from request.source_language to request.target_language.
+Adhere to the requested tone.
+If profile.kind indicates source code or another programming artefact, translate syntax and comments appropriately, providing target-language code that remains functional.
+Update artifacts.translation with the full translated text.
+Return a confirmation sentence such as "Translation drafted; excerpt: ..." that includes a brief excerpt (no more than three sentences or code lines). The show step will emit it.
+>>>
+
+helper run_quality_gate returns Text:
+  needs request (TranslationRequest) meaning "translation metadata"
+  needs profile (DocumentProfile) meaning "document classification"
+  needs artifacts (TranslationArtifacts) meaning "workspace for translations"
+  prompt:
+<<<
+Review artifacts.translation against the plan in artifacts.outline.
+List at least three quality checks confirming terminology alignment, tone, structural fidelity, and code correctness when applicable.
+Capture the checks in artifacts.qa_notes as bullet points (prefix with "- ").
+Return the checklist or a sentence that references the number of checks performed; the show step will emit it.
+>>>
+
+helper commit_translation returns Text:
+  needs request (TranslationRequest) meaning "translation metadata"
+  needs artifacts (TranslationArtifacts) meaning "final translation and QA notes"
+  prompt:
+<<<
+Write artifacts.translation to request.output_path using the save_file tool.
+After saving, return a confirmation sentence that references the path and mentions that QA notes are available under artifacts.qa_notes; the show step will emit it.
+>>>
+
+helper produce_summary returns Text:
+  needs request (TranslationRequest) meaning "translation metadata"
+  needs artifacts (TranslationArtifacts) meaning "translation results"
+  needs profile (DocumentProfile) meaning "document classification"
+  prompt:
+<<<
+Summarise the entire run in three sentences:
+1. Re-state the source and target languages plus the document type (profile.kind).
+2. Highlight any terminology or tone guidance that shaped the translation.
+3. Provide instructions for the user to review artifacts.qa_notes and the saved file at request.output_path.
+Return the same summary; the show step will emit it.
+>>>
+
+begin:
+  remember request as TranslationRequest with "source_language: {source_language}; target_language: {target_language}; tone: {tone}; context: (undetermined); input_path: {output_stub}; output_path: (unset)"
+  remember profile as DocumentProfile with "kind: (unknown); audience: (unknown); terminology: (unset); risks: (unset)"
+  remember artifacts as TranslationArtifacts with "outline: (unplanned); translation: (empty); qa_notes: (pending)"
+  note with "Prepare translation metadata, inspect the document, and orchestrate the workflow."
+  ask determine_output_path for:
+    request is memory request
+  keep answer as path_decision
+  show path_decision
+  ask inspect_source for:
+    request is memory request
+    document_text is file document
+    profile is memory profile
+  keep answer as profile_report
+  show profile_report
+  ask prepare_plan for:
+    request is memory request
+    profile is memory profile
+    artifacts is memory artifacts
+  keep answer as planning_note
+  show planning_note
+  ask translate_document for:
+    request is memory request
+    profile is memory profile
+    artifacts is memory artifacts
+    document_text is file document
+  keep answer as translation_status
+  show translation_status
+  ask run_quality_gate for:
+    request is memory request
+    profile is memory profile
+    artifacts is memory artifacts
+  keep answer as qa_status
+  show qa_status
+  ask commit_translation for:
+    request is memory request
+    artifacts is memory artifacts
+  keep answer as save_status
+  show save_status
+  ask produce_summary for:
+    request is memory request
+    artifacts is memory artifacts
+    profile is memory profile
+  keep answer as final_summary
+  show final_summary

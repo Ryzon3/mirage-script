@@ -1,6 +1,7 @@
 story "Maximum Value Finder"
 
-# Use emit_output for the lines requested by `show` and finish without extra recap text.
+# Treat `show X` as: retrieve memory X and emit it exactly once via emit_output.
+# Helpers should return text; the show steps handle printing.
 
 object NumberPile:
   has items (List<Int>) meaning "numbers pending evaluation"
@@ -16,7 +17,7 @@ helper pick_champion returns Int:
 Review pile.items and identify the largest number.
 Respond with a single factual sentence such as "Largest value: 28" and avoid exclamation marks or playful wording.
 Update pile.champion in your response so future calls know the best number.
-Call emit_output with that concise sentence and include the numeric winner.
+Return the sentence; the show step will emit it.
 >>>
 
 helper describe_numbers returns Text:

@@ -1,0 +1,24 @@
+export function rollingAverage(series: number[], window: number): number[] {
+  if (window <= 0) {
+    throw new Error("window must be positive");
+  }
+
+  const buffer: number[] = [];
+  const totals: number[] = [];
+
+  for (const value of series) {
+    buffer.push(value);
+    if (buffer.length > window) {
+      buffer.shift();
+    }
+
+    const sum = buffer.reduce((acc, entry) => acc + entry, 0);
+    totals.push(sum / buffer.length);
+  }
+
+  while (totals.length < series.length) {
+    totals.push(totals[totals.length - 1]);
+  }
+
+  return totals;
+}

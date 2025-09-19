@@ -1,0 +1,13 @@
+534678912
+672195348
+198342567
+859761423
+426853791
+713924856
+961537284
+287419635
+345286179
+
+- Rows: all rows contain digits 1-9 with no repetition.
+- Columns: all columns contain digits 1-9 with no repetition.
+- Subgrids: each 3x3 box contains digits 1-9 exactly once.

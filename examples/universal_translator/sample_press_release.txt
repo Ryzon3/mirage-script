@@ -1,0 +1,3 @@
+Acme Robotics unveiled the Vertex drone this morning, announcing a flight platform that can swap payload pods in under sixty seconds.
+The launch event focused on modular sensor bays, cross-wind stability trials, and a safety telemetry API for enterprise fleets.
+Customers may enrol in the early access program through the partner portal by July 15, with production units shipping in October.

@@ -59,7 +59,7 @@ class InterpreterTests(unittest.TestCase):
         )
         result = interpreter.run()
 
-        self.assertEqual(result.outputs, ["hi there", "done"])
+        self.assertEqual(result.outputs, ["hi there"])
         self.assertEqual(result.final_message, "done")
 
     def test_raise_error_tool_surfaces_message(self) -> None:
@@ -131,7 +131,8 @@ class InterpreterTests(unittest.TestCase):
         )
         result = interpreter.run()
 
-        self.assertEqual(result.outputs[-2:], ["numbers: [1,2,3]", "finished"])
+        self.assertEqual(result.outputs, ["numbers: [1,2,3]"])
+        self.assertEqual(result.final_message, "finished")
 
         # Ensure the tool response delivered the argument content back to the model.
         tool_exchange = client.calls[1]["messages"][-1]

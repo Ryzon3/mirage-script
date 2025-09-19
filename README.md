@@ -23,6 +23,7 @@ MirageScript is a prompt-oriented language where functions are instructions and 
    ```
 
 > Supply runtime values with `--arg name=value` (and `--file name=path` for file-based inputs).
+> Add `--debug-log transcript.jsonl` to capture the full LLM conversation for later inspection.
 
 ## Docs & language guide
 - `LANGUAGE_REFERENCE.md` documents the full MirageScript syntax, inputs, and runtime contract.
@@ -48,6 +49,8 @@ If Ruff is not pre-installed, the command will try to download it from PyPI.
 - `examples/longest_unique_substring/` — Sliding-window unique substring search.
 - `examples/valid_parentheses/` — Stack-based bracket validator.
 - `examples/merge_intervals/` — Merging overlapping intervals.
+- `examples/universal_translator/` — Multi-stage translation pipeline that writes results to disk.
+- `examples/sudoku_solver/` — Sudoku puzzle analysis, solving, and QA workflow.
 
 Each subfolder contains a `.mirage` file and a markdown explainer.
 

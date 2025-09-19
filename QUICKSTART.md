@@ -16,8 +16,8 @@ begin:
 Add a comment near the top (optional) reminding the model what the verbs mean:
 
 ```
-# Interpret `note with` as an explanatory aside. Use emit_output to share it.
-# Interpret `show X` as printing a memory or idea named X.
+# Interpret `note with` as an explanatory aside.
+# Treat `show X` as: emit the stored value X exactly once via emit_output.
 ```
 
 Run it:
@@ -39,7 +39,7 @@ helper compose_greeting returns Text:
   needs friend (Friend) meaning "person receiving the greeting"
   prompt:
 <<<
-Compose a one-sentence hello for friend.name. Call emit_output with the final line.
+Compose a one-sentence hello for friend.name. Return the greeting so the show step can emit it.
 >>>
 
 begin:
@@ -54,7 +54,7 @@ Run:
 ```bash
 uv run mirage friendly_greeter.mirage
 ```
-You should see a greeting for Jamie. The helper prompt nudges the model to call `emit_output` before finishing.
+You should see a greeting for Jamie; the helper returns the text and the `show` line emits it.
 
 ## 3. Reading CLI arguments on demand
 Describe arguments in the `inputs:` block and fetch them with `get_input` when needed.
@@ -74,7 +74,7 @@ helper find_pair returns Text:
   needs quest (NumberQuest) meaning "input numbers, target, and match placeholder"
   prompt:
 <<<
-Find two indices whose values add to quest.target. When you have them, call emit_output with the pair and a short explanation.
+Find two indices whose values add to quest.target. Return the pair and a short explanation; the show step will emit it.
 >>>
 
 begin:
@@ -104,7 +104,7 @@ helper compute_sum returns Text:
   needs dataset (Text) meaning "numbers read from the dataset file"
   prompt:
 <<<
-Split dataset into integers separated by spaces. Report their sum through emit_output.
+Split dataset into integers separated by spaces. Return a sentence reporting their sum; the show step will emit it.
 >>>
 
 begin:
@@ -125,7 +125,7 @@ The binding uses `dataset is file dataset` to make the source explicit; use `arg
 
 ## Tips
 - Annotate scripts with short comments explaining how to treat each verb; the model reads them verbatim.
-- Keep helper prompts explicit about when to call `emit_output`, especially if you expect multiple lines of output.
+- Keep helper prompts clear about which values should be returned so that `show` can emit them without duplication.
 - Inputs are on-demand; if the program never calls `get_input`, the CLI never reads the file or argument.
 - Outputs differ between runs. If you need deterministic data, instruct the helper to stick to a strict format.
 - When binding CLI data inside `ask`, prefer `argument name` for `--arg` values and `file name` for `--file` values so the source is explicit.

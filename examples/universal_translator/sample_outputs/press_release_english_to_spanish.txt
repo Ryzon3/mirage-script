@@ -1,0 +1,3 @@
+Acme Robotics presentó el dron Vertex esta mañana y anunció una plataforma de vuelo capaz de intercambiar módulos de carga útil en menos de sesenta segundos.
+El evento de lanzamiento destacó las bahías de sensores modulares, las pruebas de estabilidad con vientos cruzados y una API de telemetría de seguridad diseñada para flotas empresariales.
+Los clientes pueden inscribirse en el programa de acceso anticipado a través del portal de socios antes del 15 de julio, y las unidades de producción comenzarán a enviarse en octubre.

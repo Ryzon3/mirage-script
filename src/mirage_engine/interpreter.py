@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Sequence
 
 from .llm_client import OpenAIClient
 
+_SYSTEM_PROMPT_CACHE: str | None = None
+
 
 class MirageRuntimeError(RuntimeError):
     """Raised when the interpreter session cannot continue."""
@@ -17,6 +19,7 @@ class MirageRuntimeError(RuntimeError):
 class RunResult:
     outputs: List[str] = field(default_factory=list)
     final_message: str | None = None
+    messages: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class MirageInterpreter:
@@ -62,10 +65,9 @@ class MirageInterpreter:
             content = assistant_message.get("content")
             if isinstance(content, str) and content.strip():
                 final_message = content
-                self.outputs.append(content)
             break
 
-        return RunResult(outputs=self.outputs, final_message=final_message)
+        return RunResult(outputs=self.outputs, final_message=final_message, messages=messages)
 
     def _handle_tool_calls(
         self,
@@ -227,17 +229,14 @@ class MirageInterpreter:
         return local_candidate
 
     def _system_prompt(self) -> str:
-        return (
-            "You are Mirage, an LLM interpreter."
-            " Read the Mirage program provided by the user and execute it according"
-            " to the language reference."
-            " Use the available tools to fetch inputs, produce output, persist files,"
-            " or abort execution."
-            " You must never execute Python code yourself; instead, rely on the tools."
-            " Emit user-facing lines via emit_output exactly in the order they should"
-            " appear on the terminal."
-            " If the program cannot proceed, call raise_error with a helpful message."
-        )
+        global _SYSTEM_PROMPT_CACHE
+        if _SYSTEM_PROMPT_CACHE is None:
+            prompt_path = Path(__file__).with_name("system_prompt.txt")
+            try:
+                _SYSTEM_PROMPT_CACHE = prompt_path.read_text(encoding="utf-8")
+            except OSError as error:
+                raise MirageRuntimeError(f"Failed to load system prompt: {error}")
+        return _SYSTEM_PROMPT_CACHE
 
     def _initial_user_message(self) -> str:
         argument_names = ", ".join(sorted(self.argument_inputs)) or "(none provided)"

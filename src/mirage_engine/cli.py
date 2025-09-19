@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -48,6 +49,13 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="NAME=PATH",
         help="Provide a path for an input file declared in the script",
+    )
+    parser.add_argument(
+        "--debug-log",
+        dest="debug_log",
+        type=Path,
+        default=None,
+        help="Save the full LLM message transcript to the specified file",
     )
     return parser
 
@@ -108,6 +116,16 @@ def main(argv: list[str] | None = None) -> int:
 
     for line in result.outputs:
         print(line)
+
+    if args.debug_log:
+        try:
+            args.debug_log.parent.mkdir(parents=True, exist_ok=True)
+            with args.debug_log.open("w", encoding="utf-8") as handle:
+                for message in result.messages:
+                    json.dump(message, handle, ensure_ascii=False)
+                    handle.write("\n")
+        except OSError as error:
+            parser.error(f"Failed to write debug log: {error}")
     return 0
 
 
